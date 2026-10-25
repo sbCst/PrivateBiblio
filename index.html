@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffre-Fort Numérique - Media Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #131b2e;
+            --accent: #3b82f6;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --border: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #vault-screen {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .vault-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .input-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background-color: #0b0f19;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            height: 90px;
+            font-size: 0.8rem;
+        }
+
+        .pin-input {
+            letter-spacing: 0.5rem;
+            text-align: center;
+            font-size: 1.2rem !important;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 0.8rem;
+            border: none;
+            border-radius: 0.5rem;
+            background-color: var(--accent);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        #app-screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.4rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .app-body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100% !important;
+                height: 50vh;
+            }
+            .player-container {
+                width: 100% !important;
+                height: 50vh;
+                min-height: 250px;
+            }
+        }
+
+        .sidebar {
+            width: 420px;
+            background-color: var(--card-bg);
+            padding: 1rem;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .batch-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0b0f19;
+            padding: 0.5rem 0.8rem;
+            border-radius: 0.4rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .source-card {
+            background-color: #0b0f19;
+            padding: 0.8rem;
+            border-radius: 0.4rem;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            transition: border-color 0.2s;
+        }
+
+        .source-card:hover {
+            border-color: var(--accent);
+        }
+
+        .source-info h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.3rem;
+            color: var(--text);
+        }
+
+        .source-info p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .source-actions {
+            margin-top: 0.4rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            border-radius: 0.3rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .channels-drawer {
+            margin-top: 0.5rem;
+            background: #1e293b;
+            border-radius: 0.4rem;
+            padding: 0.5rem;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .channel-item {
+            padding: 0.4rem;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .channel-name {
+            cursor: pointer;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .channel-name:hover {
+            color: var(--accent);
+        }
+
+        .player-container {
+            flex: 1;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        video, iframe {
+            width: 100%;
+            height: 100%;
+            max-height: 100vh;
+            border: none;
+            object-fit: contain;
+        }
+
+        .no-signal {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="vault-screen">
+        <div class="vault-icon">🔒</div>
+        <h2>Espace Protégé</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Entrez vos accès pour afficher le contenu</p>
+        
+        <form id="vault-form">
+            <div class="input-group">
+                <label for="username">Identifiant</label>
+                <input type="text" id="username" placeholder="Identifiant" required>
+            </div>
+            
+            <div class="input-group">
+                <label for="pin">Code PIN (4 chiffres)</label>
+                <input type="password" id="pin" class="pin-input" maxlength="4" placeholder="••••" required>
+            </div>
+
+            <button type="submit" class="btn-primary">Déverrouiller</button>
+            <div id="error-msg" class="error-msg">Identifiant ou code PIN incorrect.</div>
+        </form>
+    </div>
+
+    <div id="app-screen">
+        <header>
+            <h3 style="font-size: 1rem; letter-spacing: 0.05rem;">📺 Media Portal</h3>
+            <div>
+                <button onclick="changePin()" class="btn-sm" style="background:#334155; color:white; margin-right:8px;">Modifier PIN</button>
+                <button onclick="lockVault()" class="btn-danger">🔒 Verrouiller</button>
+            </div>
+        </header>
+
+        <div class="app-body">
+            <div class="sidebar">
+                <div>
+                    <p class="section-title">Ajouter une source</p>
+                    <form id="add-source-form" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        <div class="input-group" style="margin-bottom:0;">
+                            <label>Type de source</label>
+                            <select id="source-type" onchange="toggleSourceFields()">
+                                <option value="m3u_text">Playlist M3U / Chaînes multiples (Coller le texte)</option>
+                                <option value="url">Lien direct / Flux / M3U8 / PHP</option>
+                                <option value="youtube">Lien YouTube</option>
+                                <option value="stalker">Portail Stalker (URL + MAC)</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom:0;">
+                            <label>Nom de la source</label>
+                            <input type="text" id="source-name" placeholder="Ex: Mes Chaînes France..." required>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom:0;" id="group-url">
+                            <label id="label-url">Collez le contenu de votre M3U ici</label>
+                            <textarea id="source-url" placeholder="#EXTM3U..."></textarea>
+                        </div>
+
+                        <div class="input-group" style="margin-bottom:0; display:none;" id="group-mac">
+                            <label>Adresse MAC</label>
+                            <input type="text" id="source-mac" placeholder="00:1A:79:...">
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="padding: 0.6rem; font-size: 0.85rem;">Enregistrer la source</button>
+                    </form>
+                </div>
+
+                <hr style="border-color: var(--border);">
+
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <p class="section-title" style="margin-bottom: 0;">Mes Sources Enregistrées</p>
+                    </div>
+                    
+                    <div class="batch-actions">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                            <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"> Tout sélectionner
+                        </label>
+                        <button class="btn-sm" style="background:var(--danger); color:white;" onclick="deleteSelectedSources()">🗑️ Supprimer</button>
+                    </div>
+
+                    <div id="sources-list" style="display: flex; flex-direction: column; gap: 0.6rem;"></div>
+                </div>
+            </div>
+
+            <div class="player-container" id="player-slot">
+                <div class="no-signal">
+                    <p style="font-size: 1.1rem; margin-bottom: 0.3rem;">Aucune source sélectionnée</p>
+                    <p style="font-size: 0.75rem;">Touchez une chaîne dans votre liste pour lancer la lecture.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_USER = "admin";
+        const DEFAULT_PIN = "1234";
+
+        // Forçage instantané des accès par défaut pour éviter tout blocage
+        localStorage.setItem("vault_user", DEFAULT_USER);
+        localStorage.setItem("vault_pin", DEFAULT_PIN);
+        if (!localStorage.getItem("tv_sources")) localStorage.setItem("tv_sources", JSON.stringify([]));
+
+        document.getElementById("vault-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const userIn = document.getElementById("username").value.trim();
+            const pinIn = document.getElementById("pin").value.trim();
+
+            if (userIn === localStorage.getItem("vault_user") && pinIn === localStorage.getItem("vault_pin")) {
+                document.getElementById("vault-screen").style.display = "none";
+                document.getElementById("app-screen").style.display = "flex";
+                renderSources();
+            } else {
+                document.getElementById("error-msg").style.display = "block";
+            }
+        });
+
+        function lockVault() {
+            document.getElementById("app-screen").style.display = "none";
+            document.getElementById("vault-screen").style.display = "block";
+            document.getElementById("pin").value = "";
+            document.getElementById("error-msg").style.display = "none";
+        }
+
+        function changePin() {
+            const newPin = prompt("Entrez votre nouveau code PIN à 4 chiffres :");
+            if (newPin && newPin.length === 4 && !isNaN(newPin)) {
+                localStorage.setItem("vault_pin", newPin);
+                alert("Code PIN mis à jour avec succès !");
+            } else {
+                alert("Code invalide. Veuillez entrer exactement 4 chiffres.");
+            }
+        }
+
+        function toggleSourceFields() {
+            const type = document.getElementById("source-type").value;
+            const macGroup = document.getElementById("group-mac");
+            const macInput = document.getElementById("source-mac");
+            const urlInput = document.getElementById("source-url");
+
+            const parentGroup = urlInput.parentElement;
+            if (type === "m3u_text") {
+                parentGroup.innerHTML = `<label id="label-url">Collez le contenu de votre M3U ici</label><textarea id="source-url" placeholder="#EXTM3U..."></textarea>`;
+            } else {
+                parentGroup.innerHTML = `<label id="label-url">Lien du flux / Fichier</label><input type="text" id="source-url" placeholder="https://..." required>`;
+            }
+
+            if (type === "stalker") {
+                macGroup.style.display = "block";
+                macInput.setAttribute("required", "true");
+            } else {
+                macGroup.style.display = "none";
+                macInput.removeAttribute("required");
+            }
+        }
+
+        document.getElementById("add-source-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const type = document.getElementById("source-type").value;
+            const name = document.getElementById("source-name").value;
+            const urlContent = document.getElementById("source-url").value;
+            const mac = type === "stalker" ? document.getElementById("source-mac").value : "";
+
+            let channels = [];
+            if (type === "m3u_text") {
+                channels = parseM3U(urlContent);
+            }
+
+            const sources = JSON.parse(localStorage.getItem("tv_sources"));
+            sources.push({ id: Date.now(), type, name, url: urlContent, mac, channels });
+            localStorage.setItem("tv_sources", JSON.stringify(sources));
+
+            this.reset();
+            toggleSourceFields();
+            renderSources();
+        });
+
+        function parseM3U(content) {
+            let channels = [];
+            let lines = content.split('\n');
+            let currentName = "";
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    let parts = line.split(',');
+                    if (parts.length > 1) {
+                        currentName = parts[parts.length - 1].trim();
+                    }
+                } else if (line && !line.startsWith('#')) {
+                    if (currentName) {
+                        channels.push({ id: Date.now() + Math.random(), name: currentName, url: line });
+                        currentName = "";
+                    }
+                }
+            }
+            return channels;
+        }
+
+        function deleteSource(id) {
+            if (confirm("Êtes-vous sûr de vouloir supprimer cette source entière ?")) {
+                let sources = JSON.parse(localStorage.getItem("tv_sources"));
+                sources = sources.filter(s => s.id !== id);
+                localStorage.setItem("tv_sources", JSON.stringify(sources));
+                renderSources();
+            }
+        }
+
+        function deleteChannel(sourceId, channelId, event) {
+            event.stopPropagation();
+            if (confirm("Voulez-vous supprimer cette chaîne de la liste ?")) {
+                let sources = JSON.parse(localStorage.getItem("tv_sources"));
+                let source = sources.find(s => s.id === sourceId);
+                if (source && source.channels) {
+                    source.channels = source.channels.filter(ch => ch.id !== channelId);
+                    localStorage.setItem("tv_sources", JSON.stringify(sources));
+                    renderSources();
+                    setTimeout(() => {
+                        const drawer = document.getElementById(`drawer-${sourceId}`);
+                        if (drawer) drawer.style.display = "block";
+                    }, 50);
+                }
+            }
+        }
+
+        function toggleSelectAll(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.source-checkbox');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+        }
+
+        function deleteSelectedSources() {
+            const checkboxes = document.querySelectorAll('.source-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert("Veuillez sélectionner au moins une source à supprimer.");
+                return;
+            }
+
+            if (confirm(`Êtes-vous sûr de vouloir supprimer ces ${checkboxes.length} source(s) ?`)) {
+                let idsToDelete = Array.from(checkboxes).map(cb => Number(cb.value));
+                let sources = JSON.parse(localStorage.getItem("tv_sources"));
+                
+                sources = sources.filter(s => !idsToDelete.includes(s.id));
+                localStorage.setItem("tv_sources", JSON.stringify(sources));
+                
+                document.getElementById("select-all").checked = false;
+                renderSources();
+            }
+        }
+
+        function toggleDrawer(id) {
+            const drawer = document.getElementById(`drawer-${id}`);
+            drawer.style.display = (drawer.style.display === "block") ? "none" : "block";
+        }
+
+        function renderSources() {
+            const listDiv = document.getElementById("sources-list");
+            const sources = JSON.parse(localStorage.getItem("tv_sources"));
+            listDiv.innerHTML = "";
+
+            if (sources.length === 0) {
+                listDiv.innerHTML = "<p style='font-size:0.75rem; color:var(--text-muted);'>Aucune source enregistrée.</p>";
+                return;
+            }
+
+            sources.forEach(source => {
+                const card = document.createElement("div");
+                card.className = "source-card";
+                
+                let mainActionHtml = "";
+                let drawerHtml = "";
+
+                if (source.type === "m3u_text" && source.channels) {
+                    mainActionHtml = `<button class="btn-sm" style="background:var(--accent); color:white;" onclick="toggleDrawer(${source.id})">📺 Chaînes (${source.channels.length})</button>`;
+                    
+                    let chanListItems = "";
+                    source.channels.forEach(ch => {
+                        let safeChan = JSON.stringify(ch).replace(/"/g, '&quot;');
+                        chanListItems += `
+                            <div class="channel-item">
+                                <span class="channel-name" onclick='loadChannel(${safeChan})'>▶ ${ch.name}</span>
+                                <button class="btn-sm" style="background:var(--danger); color:white; padding: 0.15rem 0.4rem; font-size:0.65rem;" onclick='deleteChannel(${source.id}, ${ch.id}, event)'>✕</button>
+                            </div>`;
+                    });
+
+                    drawerHtml = `<div id="drawer-${source.id}" class="channels-drawer">${chanListItems}</div>`;
+                } else {
+                    mainActionHtml = `<button class="btn-sm" style="background:var(--accent); color:white;" onclick='loadSource(${JSON.stringify(source)})'>Lancer</button>`;
+                }
+
+                card.innerHTML = `
+                    <div style="display: flex; width: 100%; align-items: flex-start; gap: 0.6rem;">
+                        <input type="checkbox" class="source-checkbox" value="${source.id}" style="margin-top:0.2rem; cursor:pointer; width:1rem; height:1rem;">
+                        <div class="source-info" style="flex:1;">
+                            <h4>${source.name}</h4>
+                            <p style='color:var(--text-muted);'><em>Type: ${source.type}</em></p>
+                            <div class="source-actions">
+                                ${mainActionHtml}
+                                <button class="btn-sm" style="background:var(--danger); color:white;" onclick="deleteSource(${source.id})">Supprimer source</button>
+                            </div>
+                        </div>
+                    </div>
+                    ${drawerHtml}
+                `;
+                listDiv.appendChild(card);
+            });
+        }
+
+        function loadChannel(channel) {
+            const slot = document.getElementById('player-slot');
+            slot.innerHTML = ""; 
+
+            const video = document.createElement('video');
+            video.id = "main-player";
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            slot.appendChild(video);
+
+            if (Hls.isSupported() && channel.url.includes(".m3u8")) {
+                const hls = new Hls();
+                hls.loadSource(channel.url);
+                hls.attachMedia(video);
+            } else {
+                video.src = channel.url;
+            }
+        }
+
+        function loadSource(source) {
+            const slot = document.getElementById('player-slot');
+            slot.innerHTML = ""; 
+
+            if (source.type === "youtube") {
+                let videoId = "";
+                if (source.url.includes("youtu.be/")) {
+                    videoId = source.url.split("youtu.be/")[1].split("?")[0];
+                } else if (source.url.includes("watch?v=")) {
+                    videoId = source.url.split("watch?v=")[1].split("&")[0];
+                } else if (source.url.includes("/live/")) {
+                    videoId = source.url.split("/live/")[1].split("?")[0];
+                }
+                
+                if (videoId) {
+                    const iframe = document.createElement('iframe');
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+                    iframe.allowFullscreen = true;
+                    slot.appendChild(iframe);
+                } else {
+                    slot.innerHTML = "<p style='color:var(--danger); padding: 20px;'>Lien YouTube invalide.</p>";
+                }
+            } else {
+                const video = document.createElement('video');
+                video.id = "main-player";
+                video.controls = true;
+                video.autoplay = true;
+                video.playsInline = true;
+                slot.appendChild(video);
+
+                if (Hls.isSupported() && source.url.includes(".m3u8")) {
+                    const hls = new Hls();
+                    hls.loadSource(source.url);
+                    hls.attachMedia(video);
+                } else {
+                    video.src = source.url;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
